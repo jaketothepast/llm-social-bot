@@ -9,18 +9,42 @@
   (:gen-class))
 
 (def config
-  {:adapter/jetty {:port 8000}})
+  ":join? false - REPL driven development"
+  {:adapter/jetty {:port 8000 :join? false}})
 
-(defn last-commit-as-patch
-  "Grab the last commit as a patch, as a string
+(def prod-config
+  "Set jetty adapter to join, used in Jar startup"
+  {:adapter/prod-jetty {:port 8000 :join? true}})
 
-  - dir: optional, directory to run this in
+;;;;;;;;;;;;;;;;;;;;;;;; APPLICATION LOGIC
+;;;;;;;;;;;;;;;;;;;;;;;;
+(defn commit-message-handler
+  "Receive commit message as input, transform into tweet and post to social media"
+  [request]
+  (let [body-str (body-string request)]
+    (resp/response {:status "received request"})))
 
-  TODO: Refactor this, I'm sure it can be done"
-  ([dir]
-   (shell/with-sh-dir dir
-     (:out (sh "git" "show" "HEAD"))))
-  ([] (:out (sh "git" "show" "HEAD"))))
+(defroutes routes
+  (POST "/commit-msg" [request] commit-message-handler))
+
+(def app
+  (json/wrap-json-response routes))
+
+;;;;;;;;;;;;;;;;;;;;;;; System configuration
+;;;;;;;;;;;;;;;;;;;;;;;
+(defmethod ig/init-key :adapter/jetty [_ opts]
+  (jetty/run-jetty app opts))
+(defmethod ig/halt-key! :adapter/jetty [_ server]
+  (.stop server))
+
+(defmethod ig/init-key :adapter/prod-jetty [_ opts]
+  (jetty/run-jetty app opts))
+
+(def system (atom nil))
+(defn start-system [] (reset! system (ig/init config)))
+(defn stop-system [] (do (ig/halt! @system)
+                         (reset! system nil)))
+(defn restart-system [] (do (stop-system) (start-system)))
 
 (defn -main
   "Print the last commit as a patch, then shutdown. In the future, this will be a full-blown webserver
@@ -29,35 +53,13 @@
 
   That's all"
   [& args]
-  (let [commit (last-commit-as-patch)]
-    (println commit)
-    (shutdown-agents)))
-
-(defn commit-message-handler
-  "Receive commit message as input, transform into tweet and post to social media"
-  [request]
-  (let [body-str (body-string request)]
-    {:status "received request"}))
-
-(defroutes routes
-  (POST "/commit-msg" [] {:status "success"}))
-
-(def app
-  (json/wrap-json-response routes))
-
-(defmethod ig/init-key :adapter/jetty [_ opts]
-  (jetty/run-jetty app (-> opts (assoc :join? false))))
-
-(defmethod ig/halt-key! :adapter/jetty [_ server]
-  (.stop server))
+  (reset! system (ig/init prod-config)))
 
 (comment
   (last-commit-as-patch "/home/jacob/Projects/fastmath")
   (last-commit-as-patch)
 
-  ;; To start the system
-  (def system
-    (ig/init config))
-
-  ;; To stop the system
-  (ig/halt! system))
+  (start-system)
+  (stop-system)
+  (restart-system)
+  (-main))
