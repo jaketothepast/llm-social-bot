@@ -10,19 +10,23 @@
 
 (def config
   ":join? false - REPL driven development"
-  {:adapter/jetty {:port 8000 :join? false}})
+  {:adapter/jetty {:port 8000 :join? false}
+   :llm/handler {:type :openai :key "test"}})
+
+(def llm-handler (atom nil))
 
 (def prod-config
   "Set jetty adapter to join, used in Jar startup"
   {:adapter/prod-jetty {:port 8000 :join? true}})
 
+;; Running the LLM <d
 ;;;;;;;;;;;;;;;;;;;;;;;; APPLICATION LOGIC
 ;;;;;;;;;;;;;;;;;;;;;;;;
 (defn commit-message-handler
   "Receive commit message as input, transform into tweet and post to social media"
   [request]
   (let [body-str (body-string request)]
-    (resp/response {:status "received request"})))
+    (resp/response {:status ((:llm/handler system) "hey")})))
 
 (defroutes routes
   (POST "/commit-msg" [request] commit-message-handler))
@@ -40,11 +44,21 @@
 (defmethod ig/init-key :adapter/prod-jetty [_ opts]
   (jetty/run-jetty app opts))
 
-(def system (atom nil))
-(defn start-system [] (reset! system (ig/init config)))
-(defn stop-system [] (do (ig/halt! @system)
-                         (reset! system nil)))
-(defn restart-system [] (do (stop-system) (start-system)))
+(def llm-handler (atom nil))
+
+(defn make-openai-handler [k]
+  (fn [k] k))
+
+(defn make-anthropic-handler [k]
+  (fn [k] (str "anthropic " k)))
+
+(defmethod ig/init-key :llm/handler [_ {:keys [type key]}]
+  (prn "Initializing the key")
+  (let [handler (cond
+                  (= type :openai) (make-openai-handler key)
+                  (= type :anthropic) (make-anthropic-handler key))]
+    (reset! llm-handler handler)
+    handler))
 
 (defn -main
   "Print the last commit as a patch, then shutdown. In the future, this will be a full-blown webserver
@@ -52,14 +66,17 @@
   to various social media platforms.
 
   That's all"
-  [& args]
-  (reset! system (ig/init prod-config)))
+  [& args])
 
 (comment
   (last-commit-as-patch "/home/jacob/Projects/fastmath")
   (last-commit-as-patch)
 
-  (start-system)
-  (stop-system)
-  (restart-system)
+  (def system (ig/init config))
+  (ig/halt! system)
+
+  ((:llm/handler system) "hey")
+
+  (@llm-handler)
+
   (-main))
