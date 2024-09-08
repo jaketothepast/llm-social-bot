@@ -19,7 +19,6 @@
   "Set jetty adapter to join, used in Jar startup"
   {:adapter/prod-jetty {:port 8000 :join? true}})
 
-;; Running the LLM <d
 ;;;;;;;;;;;;;;;;;;;;;;;; APPLICATION LOGIC
 ;;;;;;;;;;;;;;;;;;;;;;;;
 (defn commit-message-handler
