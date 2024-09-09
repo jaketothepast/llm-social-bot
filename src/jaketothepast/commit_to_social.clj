@@ -10,18 +10,8 @@
   (:gen-class))
 
 (def config
-  ":join? false - REPL driven development"
-  {:adapter/jetty {:port 8000 :join? false}
-   :llm/handler {:type :openai :key "test"}})
+  (ig/read-string (slurp "config.edn")))
 
-(def llm-handler (atom nil))
-
-(def prod-config
-  "Set jetty adapter to join, used in Jar startup"
-  {:adapter/prod-jetty {:port 8000 :join? true}})
-
-;;;;;;;;;;;;;;;;;;;;;;;; APPLICATION LOGIC
-;;;;;;;;;;;;;;;;;;;;;;;;
 (defn commit-message-handler
   "Receive commit message as input, transform into tweet and post to social media"
   [request]
@@ -34,23 +24,22 @@
 (def app
   (json/wrap-json-response routes))
 
-;;;;;;;;;;;;;;;;;;;;;;; System configuration
-;;;;;;;;;;;;;;;;;;;;;;;
 (defmethod ig/init-key :adapter/jetty [_ opts]
   (jetty/run-jetty app opts))
+
 (defmethod ig/halt-key! :adapter/jetty [_ server]
   (.stop server))
 
 (defmethod ig/init-key :adapter/prod-jetty [_ opts]
   (jetty/run-jetty app opts))
 
+(defn make-anthropic-handler [k]
+  (fn [k] k))
+
 (defmethod ig/init-key :llm/handler [_ {:keys [type key]}]
-  (prn "Initializing the key")
-  (let [handler (cond
-                  (= type :openai) (openai/->ChatGPT key)
-                  (= type :anthropic) (make-anthropic-handler key))]
-    (reset! llm-handler handler
-    handler))
+  (cond
+    (= type :openai) (openai/->ChatGPT key)
+    (= type :anthropic) (make-anthropic-handler key)))
 
 (defn -main
   "Print the last commit as a patch, then shutdown. In the future, this will be a full-blown webserver
