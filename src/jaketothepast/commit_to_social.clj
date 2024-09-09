@@ -58,6 +58,9 @@
 
   ((:llm/handler system) "hey")
 
+  (let [patch (slurp "sample-patch.txt")]
+    ((:llm/handler system) patch))
+
   (@llm-handler)
 
   (-main))

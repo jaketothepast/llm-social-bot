@@ -4,24 +4,26 @@
 
 (def model "gpt-4o")
 
-(def system-prompt "You are the world's best social media strategist, and your expertise is turning commit messages into high engagement tweets. You work for a developer that hates going on social media.
-Structure your tweets accordingly.")
-
+(def system-prompt "You write social media updates for developers. You receive git patches as input and turn them into tweets.
+Keep the tweets concise, and optimize for engagement. Do not use emojis or hashtags.")
 
 (defrecord ChatGPT [key]
   clojure.lang.IFn
   (invoke [this commit-msg]
-    (api/create-chat-completion
-     {:model model
-      :messages (protocols/make-prompt this commit-msg)}
-     {:api-key key}))
+    (get-response (api/create-chat-completion
+                   {:model model
+                    :messages (protocols/make-prompt this commit-msg)}
+                   {:api-key key})))
   protocols/PromptProto
   (make-prompt [_ message]
     [{:role "system" :content system-prompt}
      {:role "user" :content message}]))
 
+(defn get-response [{:keys [choices]}]
+  (-> (nth choices 0)
+      :message
+      :content))
+
 (comment
   (let [model (->ChatGPT "mykey")]
-    (model "hey")
-    )
-  )
+    (model "hey")))
