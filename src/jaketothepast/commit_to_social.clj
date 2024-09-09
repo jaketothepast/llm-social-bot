@@ -5,7 +5,8 @@
             [ring.util.request :refer [body-string]]
             [ring.middleware.json :as json]
             [compojure.core :refer [defroutes POST]]
-            [integrant.core :as ig])
+            [integrant.core :as ig]
+            [jaketothepast.llms.openai :as openai])
   (:gen-class))
 
 (def config
@@ -43,20 +44,12 @@
 (defmethod ig/init-key :adapter/prod-jetty [_ opts]
   (jetty/run-jetty app opts))
 
-(def llm-handler (atom nil))
-
-(defn make-openai-handler [k]
-  (fn [k] k))
-
-(defn make-anthropic-handler [k]
-  (fn [k] (str "anthropic " k)))
-
 (defmethod ig/init-key :llm/handler [_ {:keys [type key]}]
   (prn "Initializing the key")
   (let [handler (cond
-                  (= type :openai) (make-openai-handler key)
+                  (= type :openai) (openai/->ChatGPT key)
                   (= type :anthropic) (make-anthropic-handler key))]
-    (reset! llm-handler handler)
+    (reset! llm-handler handler
     handler))
 
 (defn -main
