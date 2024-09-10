@@ -5,7 +5,9 @@
             [ring.util.request :refer [body-string]]
             [ring.middleware.json :as json]
             [compojure.core :refer [defroutes POST]]
+            [reitit.ring :as ring]
             [integrant.core :as ig]
+            [user :as u]
             [jaketothepast.llms.openai :as openai])
   (:gen-class))
 
@@ -16,13 +18,16 @@
   "Receive commit message as input, transform into tweet and post to social media"
   [request]
   (let [body-str (body-string request)]
-    (resp/response {:status ((:llm/handler system) "hey")})))
+    (resp/response {:status ((:llm/handler system) body-str)})))
 
 (defroutes routes
   (POST "/commit-msg" [request] commit-message-handler))
 
 (def app
-  (json/wrap-json-response routes))
+  (ring/ring-handler
+   (ring/router
+    ["/commit-msg" {:post {:handler #'commit-message-handler}}]
+    {:data {:middleware [json/wrap-json-response]}})))
 
 (defmethod ig/init-key :adapter/jetty [_ opts]
   (jetty/run-jetty app opts))
@@ -50,9 +55,6 @@
   [& args])
 
 (comment
-  (last-commit-as-patch "/home/jacob/Projects/fastmath")
-  (last-commit-as-patch)
-
   (def system (ig/init config))
   (ig/halt! system)
 
@@ -61,6 +63,5 @@
   (let [patch (slurp "sample-patch.txt")]
     ((:llm/handler system) patch))
 
-  (@llm-handler)
 
   (-main))

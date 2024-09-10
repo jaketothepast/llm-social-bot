@@ -7,6 +7,11 @@
 (def system-prompt "You write social media updates for developers. You receive git patches as input and turn them into tweets.
 Keep the tweets concise, and optimize for engagement. Do not use emojis or hashtags.")
 
+(defn get-response [{:keys [choices]}]
+  (-> (nth choices 0)
+      :message
+      :content))
+
 (defrecord ChatGPT [key]
   clojure.lang.IFn
   (invoke [this commit-msg]
@@ -19,10 +24,6 @@ Keep the tweets concise, and optimize for engagement. Do not use emojis or hasht
     [{:role "system" :content system-prompt}
      {:role "user" :content message}]))
 
-(defn get-response [{:keys [choices]}]
-  (-> (nth choices 0)
-      :message
-      :content))
 
 (comment
   (let [model (->ChatGPT "mykey")]
