@@ -1,14 +1,14 @@
 (ns jaketothepast.commit-to-social
-  (:require [clojure.java.shell :as shell :refer [sh]]
-            [ring.adapter.jetty :as jetty]
-            [ring.util.response :as resp]
-            [ring.util.request :refer [body-string]]
-            [ring.middleware.json :as json]
-            [compojure.core :refer [defroutes POST]]
-            [reitit.ring :as ring]
-            [integrant.core :as ig]
-            [user :as u]
-            [jaketothepast.llms.openai :as openai])
+  (:require
+   [ring.adapter.jetty :as jetty]
+   [ring.util.response :as resp]
+   [ring.util.request :refer [body-string]]
+   [ring.middleware.json :as json]
+   [reitit.ring :as ring]
+   [integrant.core :as ig]
+   [user :as u]
+   [jaketothepast.llms.openai :as openai]
+   [jaketothepast.llms.anthropic :as anthropic])
   (:gen-class))
 
 (def config
@@ -19,9 +19,6 @@
   [request]
   (let [body-str (body-string request)]
     (resp/response {:status ((:llm/handler system) body-str)})))
-
-(defroutes routes
-  (POST "/commit-msg" [request] commit-message-handler))
 
 (def app
   (ring/ring-handler
@@ -38,13 +35,10 @@
 (defmethod ig/init-key :adapter/prod-jetty [_ opts]
   (jetty/run-jetty app opts))
 
-(defn make-anthropic-handler [k]
-  (fn [k] k))
-
 (defmethod ig/init-key :llm/handler [_ {:keys [type key]}]
   (cond
     (= type :openai) (openai/->ChatGPT key)
-    (= type :anthropic) (make-anthropic-handler key)))
+    (= type :anthropic) (anthropic/->Claude key)))
 
 (defn -main
   "Print the last commit as a patch, then shutdown. In the future, this will be a full-blown webserver
@@ -62,6 +56,5 @@
 
   (let [patch (slurp "sample-patch.txt")]
     ((:llm/handler system) patch))
-
 
   (-main))
