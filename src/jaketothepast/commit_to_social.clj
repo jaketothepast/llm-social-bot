@@ -6,14 +6,17 @@
    [ring.middleware.json :as json]
    [reitit.ring :as ring]
    [integrant.core :as ig]
-   [user :as u]
    [jaketothepast.llms.openai :as openai]
-   [jaketothepast.llms.anthropic :as anthropic])
+   [jaketothepast.llms.anthropic :as anthropic]
+   [jaketothepast.socials.twitter :as twitter])
   (:gen-class))
 
 (def config
   (ig/read-string (slurp "config.edn")))
+(def system nil)
 
+;; TODO: :llm/handler needs to be read from the system, rather than the config.
+;;  - Need system-wide way to manage system, in reload-friendly fashion
 (defn commit-message-handler
   "Receive commit message as input, transform into tweet and post to social media"
   [request]
@@ -39,6 +42,9 @@
   (cond
     (= type :openai) (openai/->ChatGPT key)
     (= type :anthropic) (anthropic/->Claude key)))
+
+(defmethod ig/init-key :socials/twitter [_ {:keys [api-keys]}]
+  (twitter/oauth2-creds api-keys))
 
 (defn -main
   "Print the last commit as a patch, then shutdown. In the future, this will be a full-blown webserver
