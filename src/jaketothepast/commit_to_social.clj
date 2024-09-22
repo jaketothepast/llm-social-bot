@@ -9,7 +9,9 @@
    [jaketothepast.llms.openai :as openai]
    [jaketothepast.llms.anthropic :as anthropic]
    [jaketothepast.socials.twitter :as twitter]
-   [jaketothepast.llms.local :as local])
+   [jaketothepast.llms.local :as local]
+   [clojure.java.io :as io]
+   [clojure.edn :as edn])
   (:gen-class))
 
 (def config
@@ -44,6 +46,12 @@
     (= type :openai) (openai/->ChatGPT key)
     (= type :anthropic) (anthropic/->Claude key)
     (= type :local) (local/->Local url local-dir)))
+
+(defmethod ig/init-key :llm/local-config [_ {:keys [local-dir cache-file]}]
+  ;; Should make the directory if doesn't exist, then read in the cache file.
+  (let [dir (io/file local-dir)
+        created? (.mkdirs dir)]
+    ))
 
 (defmethod ig/init-key :socials/twitter [_ {:keys [api-keys]}]
   (twitter/oauth2-creds api-keys))

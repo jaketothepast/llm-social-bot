@@ -6,7 +6,7 @@
 ;; This namespace encapsulates using local LLMs via llama.clj. To use these models, simply download the models
 ;; yourself, then load in the model type using the classpath.
 
-(def cache-file "models.edn")
+(def cache-file "sample-models.edn")
 
 (defrecord Local [url local-dir model]
   clojure.lang.IFn
@@ -17,8 +17,9 @@
 
 ;; TODO: Retrieve the model if the model hasn't already been downloaded
 (defn- retrieve-model [local-dir url]
-  (let [cache (edn/read-string (slurp (io/file local-dir)))]
-    ))
+  (let [cache-file-location (io/file local-dir cache-file)]
+    (when-let [cache (edn/read-string (slurp cache-file-location))]
+      cache)))
 
 (defn config->Local [url local-dir]
   ;; Download the model first, and then use it in the API call
@@ -30,4 +31,6 @@
 
 (comment
   (-> (io/file "~" "models") (.getCanonicalFile))
-  (-> (io/file "../models") (.getAbsolutePath)))
+  (-> (io/file "../models") (.getAbsolutePath))
+  (retrieve-model  "." "https://example.com" )
+  )
