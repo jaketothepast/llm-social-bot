@@ -51,7 +51,9 @@
   ;; Should make the directory if doesn't exist, then read in the cache file.
   (let [dir (io/file local-dir)
         created? (.mkdirs dir)]
-    ))
+    (if created?
+      (with-open [out-data (io/writer (io/file dir cache-file))]
+        (.write (pr-str {}))))))
 
 (defmethod ig/init-key :socials/twitter [_ {:keys [api-keys]}]
   (twitter/oauth2-creds api-keys))
