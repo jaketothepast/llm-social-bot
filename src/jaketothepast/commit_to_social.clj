@@ -45,7 +45,7 @@
   (cond
     (= type :openai) (openai/->ChatGPT key)
     (= type :anthropic) (anthropic/->Claude key)
-    (= type :local) (local/->Local url local-dir)))
+    (= type :local) (local/config->Local url local-dir)))
 
 (defmethod ig/init-key :llm/local-config [_ {:keys [local-dir cache-file]}]
   ;; Should make the directory if doesn't exist, then read in the cache file.
