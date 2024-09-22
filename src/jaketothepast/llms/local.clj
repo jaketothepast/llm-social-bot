@@ -13,12 +13,12 @@
   (invoke [_ commit-msg]
     (prn commit-msg))
   protocols/PromptProto
-  (make-prompt [_ message]
-    ))
+  (make-prompt [_ message]))
 
 ;; TODO: Retrieve the model if the model hasn't already been downloaded
 (defn- retrieve-model [local-dir url]
-  (let [cache (slurp )]))
+  (let [cache (edn/read-string (slurp (io/file local-dir)))]
+    ))
 
 (defn config->Local [url local-dir]
   ;; Download the model first, and then use it in the API call
@@ -30,5 +30,4 @@
 
 (comment
   (-> (io/file "~" "models") (.getCanonicalFile))
-  (-> (io/file "../models") (.getAbsolutePath))
-  )
+  (-> (io/file "../models") (.getAbsolutePath)))
