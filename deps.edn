@@ -7,6 +7,7 @@
         compojure/compojure {:mvn/version "1.7.1"}
         metosin/reitit {:mvn/version "0.7.2"}
         integrant/integrant {:mvn/version "0.11.0"}
+        clj-http/clj-http {:mvn/version "3.13.0"}
         ring/ring-devel {:mvn/version "1.12.2"}
         net.clojars.wkok/openai-clojure {:mvn/version "0.21.0"}
         org.clojure/core.async {:mvn/version "1.6.681"}
