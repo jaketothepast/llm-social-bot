@@ -8,7 +8,8 @@
    [integrant.core :as ig]
    [jaketothepast.llms.openai :as openai]
    [jaketothepast.llms.anthropic :as anthropic]
-   [jaketothepast.socials.twitter :as twitter])
+   [jaketothepast.socials.twitter :as twitter]
+   [jaketothepast.llms.local :as local])
   (:gen-class))
 
 (def config
@@ -38,10 +39,11 @@
 (defmethod ig/init-key :adapter/prod-jetty [_ opts]
   (jetty/run-jetty app opts))
 
-(defmethod ig/init-key :llm/handler [_ {:keys [type key]}]
+(defmethod ig/init-key :llm/handler [_ {:keys [type key url local-dir]}]
   (cond
     (= type :openai) (openai/->ChatGPT key)
-    (= type :anthropic) (anthropic/->Claude key)))
+    (= type :anthropic) (anthropic/->Claude key)
+    (= type :local) (local/->Local url local-dir)))
 
 (defmethod ig/init-key :socials/twitter [_ {:keys [api-keys]}]
   (twitter/oauth2-creds api-keys))
@@ -57,6 +59,7 @@
 (comment
   (def system (ig/init config))
   (ig/halt! system)
+  (:llm/handler system)
 
   ((:llm/handler system) "hey")
 
