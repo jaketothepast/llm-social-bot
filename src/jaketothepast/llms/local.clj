@@ -2,19 +2,15 @@
   (:require [jaketothepast.llms.protocols :as protocols]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clj-http.client :as client]
+            [com.phronemophobic.llama :as llama]
             [clojure.string :as str]))
 
 ;; This namespace encapsulates using local LLMs via llama.clj. To use these models, simply download the models
 ;; yourself, then load in the model type using the classpath.
-
-(def cache-file "sample-models.edn")
-
-(defrecord Local [url local-dir model]
-  clojure.lang.IFn
-  (invoke [_ commit-msg]
-    (prn commit-msg))
-  protocols/PromptProto
-  (make-prompt [_ message]))
+;;
+(def local-llm-state (atom {:model-context nil
+                            :model-location nil}))
 
 (defn- model-name [url]
   (-> (io/as-url url)
@@ -22,27 +18,51 @@
       (str/split #"/")
       last))
 
+(defn- download-model
+  "Either download the model, or return the path."
+  [url local-dir]
+  (let [filename (model-name url)
+        model-file (io/file local-dir filename)
+        file-write-promise (promise)]
+    (if (.exists model-file)
+      (deliver file-write-promise (.getCanonicalPath model-file)) ;; It exists, deliver the path
+      (future (do ;; It doesn't exist, download it on the background thread.
+                (when (not (.exists model-file))
+                  (with-open [in (io/input-stream (io/as-url url))
+                              out (io/output-stream model-file)]
+                    (io/copy in out)))
+                (deliver file-write-promise (.getCanonicalPath model-file)))))
+    file-write-promise))
+
 (defn- retrieve-model
   "Get the model weights, optionally download the model weights from the internet
   first. If we download the model weights from the internet, then write the weight
   location to the cache."
-  [local-dir url]
-  (let [cache-file-location (io/file local-dir cache-file)
-        dir (io/file local-dir)]
+  [url local-dir]
+  (let [dir (io/file local-dir)]
     ;; Handle creating our model dir and our cache file location
-    (or (.exists dir) (.mkdirs dir))
-    (or (.exists cache-file-location) (.createNewFile cache-file-location))
-    (let [data (edn/read-string (slurp cache-file-location))
-          model-exists? (and (nil? data) (nil? (get data url)))
-          update {url (model-name url)}]
-      ;; If data is nil, retrieve model, write update to edn file
-      ;; If data is not nil, try to retrieve model. If present, return the model weights
-      ;; If data is not nil, can't retrieve model, download model
-      update)))
+    (or (.exists local-dir) (.mkdirs local-dir))
+    (let [model-location (download-model url local-dir)] ;; Gets a promise
+      (swap! local-llm-state assoc :model-location model-location))))
+
+(defn- model-context
+  "When invoking the model, don't try to deref the promise until now. This gives it time to load in the background"
+  []
+  (let [location (deref (:model-location @local-llm-state)) ;; Deref the promise from retrieve
+        context (:model-context @local-llm-state)]
+    (if-not (nil? context)
+      context
+      (swap! local-llm-state assoc :model-context (llama/create-context location)))))
 
 ;; TODO
 ;; 1. Handle local model directory
 ;; 2. EDN file in model directory that shows what has been downloaded, a cache of requests
+(defrecord Local [context]
+  clojure.lang.IFn
+  (invoke [_ commit-msg]
+    (prn commit-msg))
+  protocols/PromptProto
+  (make-prompt [_ message]))
 
 (comment
   (-> (io/file "~" "models") (.getCanonicalFile))
@@ -50,4 +70,13 @@
   (retrieve-model  "." "https://example.com/clunker.txt")
   (def llama-model "https://huggingface.co/QuantFactory/Meta-Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct.Q2_K.gguf")
   (model-name llama-model)
-  )
+
+  (download-model llama-model "./models")
+  (retrieve-model llama-model "./models-sample")
+  (model-context)
+
+  @local-llm-state
+
+  (:model-location local-llm-state)
+
+  ())
