@@ -41,7 +41,7 @@
   [url local-dir]
   (let [dir (io/file local-dir)]
     ;; Handle creating our model dir and our cache file location
-    (or (.exists local-dir) (.mkdirs local-dir))
+    (or (.exists dir) (.mkdirs dir)) ; Create the local directory, this didn't expand tilde
     (let [model-location (download-model url local-dir)] ;; Gets a promise
       (swap! local-llm-state assoc :model-location model-location))))
 
@@ -57,12 +57,16 @@
 ;; TODO
 ;; 1. Handle local model directory
 ;; 2. EDN file in model directory that shows what has been downloaded, a cache of requests
-(defrecord Local [context]
+(defrecord Local []
   clojure.lang.IFn
   (invoke [_ commit-msg]
     (prn commit-msg))
   protocols/PromptProto
   (make-prompt [_ message]))
+
+(defn config->Local [url local-dir]
+  (retrieve-model url local-dir)
+  (->Local))
 
 (comment
   (-> (io/file "~" "models") (.getCanonicalFile))
