@@ -1,11 +1,9 @@
 (ns jaketothepast.llms.openai
   (:require [wkok.openai-clojure.api :as api]
-            [jaketothepast.llms.protocols :as protocols]))
+            [jaketothepast.llms.protocols :as protocols]
+            [jaketothepast.llms.prompts :as prompts]))
 
 (def model "gpt-4o")
-
-(def system-prompt "You write social media updates for developers. You receive git patches as input and turn them into tweets.
-Keep the tweets concise, and optimize for engagement. Do not use emojis or hashtags.")
 
 (defn get-response [{:keys [choices]}]
   (-> (nth choices 0)
@@ -21,7 +19,7 @@ Keep the tweets concise, and optimize for engagement. Do not use emojis or hasht
                    {:api-key key})))
   protocols/PromptProto
   (make-prompt [_ message]
-    [{:role "system" :content system-prompt}
+    [{:role "system" :content prompts/system-prompt}
      {:role "user" :content message}]))
 
 
