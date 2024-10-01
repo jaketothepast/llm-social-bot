@@ -49,16 +49,20 @@
 (defn- model-context
   "When invoking the model, don't try to deref the promise until now. This gives it time to load in the background"
   []
-  (let [location (deref (:model-location @local-llm-state)) ;; Deref the promise from retrieve
+  (let [location (cond-> (:model-location @local-llm-state)
+                   future? deref) ;; Deref the promise from retriev
         context (:model-context @local-llm-state)]
-    (if-not (nil? context)
-      context
-      (swap! local-llm-state assoc :model-context (llama/create-context location)))))
+    (if (nil? context)
+      (swap! local-llm-state merge {:model-location location
+                                    :model-context (llama/create-context location)}))
+    (:model-context @local-llm-state)))
 
 (defrecord Local []
   clojure.lang.IFn
   (invoke [this commit-msg]
-    (llama/generate-string (:model-context @local-llm-state) (protocols/make-prompt this commit-msg)))
+    (llama/generate-string
+     (model-context)
+     (protocols/make-prompt this commit-msg)))
   protocols/PromptProto
   (make-prompt [_ message]
     (llama/chat-apply-template

@@ -33,6 +33,8 @@
     {:data {:middleware [json/wrap-json-response]}})))
 
 (defmethod ig/init-key :adapter/jetty [_ opts]
+  (println "RUNNING JETTY")
+  (println (str "OPTS: " opts))
   (jetty/run-jetty app opts))
 
 (defmethod ig/halt-key! :adapter/jetty [_ server]
@@ -42,6 +44,7 @@
   (jetty/run-jetty app opts))
 
 (defmethod ig/init-key :llm/handler [_ {:keys [type key url local-dir]}]
+  (println (str "TYPE: " type " KEY: " key "URL: " url "LOCAL DIR: " local-dir))
   (cond
     (= type :openai) (openai/->ChatGPT key)
     (= type :anthropic) (anthropic/->Claude key)
@@ -69,4 +72,5 @@
   (let [patch (slurp "sample-patch.txt")]
     ((:llm/handler system) patch))
 
+  local/local-llm-state
   (-main))
