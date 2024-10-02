@@ -44,7 +44,6 @@
   (jetty/run-jetty app opts))
 
 (defmethod ig/init-key :llm/handler [_ {:keys [type key url local-dir]}]
-  (println (str "TYPE: " type " KEY: " key "URL: " url "LOCAL DIR: " local-dir))
   (cond
     (= type :openai) (openai/->ChatGPT key)
     (= type :anthropic) (anthropic/->Claude key)
@@ -73,4 +72,7 @@
     ((:llm/handler system) patch))
 
   local/local-llm-state
+  (add-tap clojure.pprint/pprint)
+  (remove-tap clojure.pprint/pprint)
+
   (-main))

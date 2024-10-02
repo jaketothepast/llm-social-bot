@@ -5,7 +5,8 @@
             [clj-http.client :as client]
             [com.phronemophobic.llama :as llama]
             [clojure.string :as str]
-            [jaketothepast.llms.prompts :as prompts]))
+            [jaketothepast.llms.prompts :as prompts]
+            [jaketothepast.utils :as utils]))
 
 ;; This namespace encapsulates using local LLMs via llama.clj. To use these models, simply download the models
 ;; yourself, then load in the model type using the classpath.
@@ -49,19 +50,24 @@
 (defn- model-context
   "When invoking the model, don't try to deref the promise until now. This gives it time to load in the background"
   []
-  (let [location (cond-> (:model-location @local-llm-state)
-                   future? deref) ;; Deref the promise from retriev
+  (let [model-location (:model-location @local-llm-state)
+        location (cond-> model-location
+                   (utils/promise? model-location) deref) ;; Deref the promise from retriev
         context (:model-context @local-llm-state)]
+    (tap> {:location location
+           :context context})   
     (if (nil? context)
       (swap! local-llm-state merge {:model-location location
-                                    :model-context (llama/create-context location)}))
+                                    :model-context (llama/create-context location {:n-ctx 8192})})) ;; TODO: n-ctx should be a local configuration
     (:model-context @local-llm-state)))
 
-(defrecord Local []
+(defrecord Local [n-ctx]
   clojure.lang.IFn
   (invoke [this commit-msg]
+    (tap> {:commit-msg commit-msg
+           :llm-state @local-llm-state})
     (llama/generate-string
-     (model-context)
+     (model-context (this :n-ctx))
      (protocols/make-prompt this commit-msg)))
   protocols/PromptProto
   (make-prompt [_ message]
@@ -89,6 +95,14 @@
 
   @local-llm-state
 
+  (def location (:model-location @local-llm-state))
+  (deref location)
+  (if (future? location)
+    (deref location)
+    location)
+  (cond-> location
+      (utils/promise? location) deref)
+
   (:model-location @local-llm-state)
   (get (llama/metadata (:model-context @local-llm-state)) "tokenizer.chat_template")
 
@@ -101,5 +115,6 @@
 
   (def model (->Local))
 
+  (add-tap clojure.pprint/pprint)
   (model "Hello world")
   ())
