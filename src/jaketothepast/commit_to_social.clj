@@ -8,10 +8,11 @@
    [integrant.core :as ig]
    [jaketothepast.llms.openai :as openai]
    [jaketothepast.llms.anthropic :as anthropic]
-   [jaketothepast.socials.twitter :as twitter]
    [jaketothepast.llms.local :as local]
    [clojure.java.io :as io]
    [clojure.edn :as edn])
+  (:import
+   (com.twitter.clientlib TwitterCredentialsOAuth2))
   (:gen-class))
 
 (def config
@@ -49,9 +50,12 @@
     (= type :anthropic) (anthropic/->Claude key)
     (= type :local) (local/config->Local url local-dir)))
 
-
-(defmethod ig/init-key :socials/twitter [_ {:keys [api-keys]}]
-  (twitter/oauth2-creds api-keys))
+(defmethod ig/init-key :socials/twitter [_ {:keys [client-id client-secret]}]
+   (TwitterCredentialsOAuth2.
+    client-id
+    client-secret
+    (System/getenv "TWITTER_OAUTH2_ACCESS_TOKEN")
+    (System/getenv "TWITTER_OAUTH2_REFRESH_TOKEN")))
 
 (defn -main
   "Print the last commit as a patch, then shutdown. In the future, this will be a full-blown webserver
@@ -72,6 +76,8 @@
     ((:llm/handler system) patch))
 
   local/local-llm-state
+
+  system
   (add-tap clojure.pprint/pprint)
   (remove-tap clojure.pprint/pprint)
 

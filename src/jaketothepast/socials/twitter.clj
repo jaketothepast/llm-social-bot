@@ -2,20 +2,14 @@
   (:require [clojure.core.async :as a :refer [go chan <!! >!! <! >!]]
             [clojure.java.shell :as sh]
             [ring.adapter.jetty :as jetty]
+            [jaketothepast.commit-to-social :as cts]
             [ring.middleware.params :refer [wrap-params]])
-  (:import (com.twitter.clientlib TwitterCredentialsOAuth2)
+  (:import
            (com.twitter.clientlib.api TwitterApi)
            (com.twitter.clientlib.auth TwitterOAuth20Service)
            (com.github.scribejava.core.pkce PKCE PKCECodeChallengeMethod)
            (com.github.scribejava.core.model OAuth2AccessToken)
            (java.net URLEncoder)))
-
-(def twitter-api
-  (TwitterCredentialsOAuth2.
-   (System/getenv "TWITTER_OAUTH2_CLIENT_ID")
-   (System/getenv "TWITTER_OAUTH2_CLIENT_SECRET")
-   (System/getenv "TWITTER_OAUTH2_ACCESS_TOKEN")
-   (System/getenv "TWITTER_OAUTH2_REFRESH_TOKEN")))
 
 (def twitter-state (atom {:server nil
                           :chan nil
@@ -24,18 +18,9 @@
                           :api-keys {:api-key nil :api-key-secret nil :access-token nil :refresh-token nil}
                           :ds nil}))
 
-(defn oauth2-creds
-  "Construct twitter credentials from the state atom"
-  [{{:keys [api-key api-key-secret]} :api-keys}]
-   (TwitterCredentialsOAuth2.
-    api-key
-    api-key-secret
-    (System/getenv "TWITTER_OAUTH2_ACCESS_TOKEN")
-    (System/getenv "TWITTER_OAUTH2_REFRESH_TOKEN")))
-
 (def service (TwitterOAuth20Service.
-              (.getTwitterOauth2ClientId twitter-api)
-              (.getTwitterOAuth2ClientSecret twitter-api)
+              (.getTwitterOauth2ClientId (:socials/twitter cts/system))
+              (.getTwitterOAuth2ClientSecret (:socials/twitter cts/system))
               "http://localhost:3000/login/success"
               "offline.access tweet.read tweet.write users.read"))
 
@@ -69,7 +54,7 @@
 (defn authorize-app []
   (let [creds (get-oauth2-credentials)]
     (doto
-     twitter-api
+     (:socials/twitter cts/system)
       (.getAccessToken creds)
       (.getRefreshToken creds))
     (swap! twitter-state assoc :api (TwitterApi. twitter-api))))
@@ -77,4 +62,5 @@
 (comment
   (twitter-creds-oauth2)
 
+  (:socials/twitter cts/system)
   )
