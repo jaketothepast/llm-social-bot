@@ -5,11 +5,11 @@
             [jaketothepast.commit-to-social :as cts]
             [ring.middleware.params :refer [wrap-params]])
   (:import
-           (com.twitter.clientlib.api TwitterApi)
-           (com.twitter.clientlib.auth TwitterOAuth20Service)
-           (com.github.scribejava.core.pkce PKCE PKCECodeChallengeMethod)
-           (com.github.scribejava.core.model OAuth2AccessToken)
-           (java.net URLEncoder)))
+   (com.twitter.clientlib.api TwitterApi)
+   (com.twitter.clientlib.auth TwitterOAuth20Service)
+   (com.github.scribejava.core.pkce PKCE PKCECodeChallengeMethod)
+   (com.github.scribejava.core.model OAuth2AccessToken)
+   (java.net URLEncoder)))
 
 (def twitter-state (atom {:server nil
                           :chan nil
@@ -53,14 +53,15 @@
 
 (defn authorize-app []
   (let [creds (get-oauth2-credentials)]
-    (doto
-     (:socials/twitter cts/system)
-      (.getAccessToken creds)
-      (.getRefreshToken creds))
-    (swap! twitter-state assoc :api (TwitterApi. twitter-api))))
+    (swap! twitter-state assoc :api
+           (TwitterApi. (doto
+                         (:socials/twitter cts/system)
+                          (.getAccessToken creds)
+                          (.getRefreshToken creds))))))
 
 (comment
   (twitter-creds-oauth2)
 
-  (:socials/twitter cts/system)
-  )
+  (authorize-app)
+
+  (:socials/twitter cts/system))
