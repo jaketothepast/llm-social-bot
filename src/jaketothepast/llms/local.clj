@@ -49,7 +49,7 @@
 
 (defn- model-context
   "When invoking the model, don't try to deref the promise until now. This gives it time to load in the background"
-  []
+  [n-ctx]
   (let [model-location (:model-location @local-llm-state)
         location (cond-> model-location
                    (utils/promise? model-location) deref) ;; Deref the promise from retriev
@@ -58,7 +58,7 @@
            :context context})   
     (if (nil? context)
       (swap! local-llm-state merge {:model-location location
-                                    :model-context (llama/create-context location {:n-ctx 8192})})) ;; TODO: n-ctx should be a local configuration
+                                    :model-context (llama/create-context location {:n-ctx n-ctx})})) ;; TODO: n-ctx should be a local configuration
     (:model-context @local-llm-state)))
 
 (defrecord Local [n-ctx]
@@ -67,7 +67,7 @@
     (tap> {:commit-msg commit-msg
            :llm-state @local-llm-state})
     (llama/generate-string
-     (model-context (this :n-ctx))
+     (model-context n-ctx)
      (protocols/make-prompt this commit-msg)))
   protocols/PromptProto
   (make-prompt [_ message]
@@ -80,7 +80,7 @@
 
 (defn config->Local [url local-dir]
   (retrieve-model url local-dir)
-  (->Local))
+  (->Local 8096))
 
 (comment
   (-> (io/file "~" "models") (.getCanonicalFile))
