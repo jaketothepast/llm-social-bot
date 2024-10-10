@@ -10,9 +10,8 @@
    [jaketothepast.llms.anthropic :as anthropic]
    [jaketothepast.llms.local :as local]
    [clojure.java.io :as io]
-   [clojure.edn :as edn])
-  (:import
-   (com.twitter.clientlib TwitterCredentialsOAuth2))
+   [clojure.edn :as edn]
+   [jaketothepast.socials.twitter :as twitter])
   (:gen-class))
 
 (def config
@@ -34,8 +33,6 @@
     {:data {:middleware [json/wrap-json-response]}})))
 
 (defmethod ig/init-key :adapter/jetty [_ opts]
-  (println "RUNNING JETTY")
-  (println (str "OPTS: " opts))
   (jetty/run-jetty app opts))
 
 (defmethod ig/halt-key! :adapter/jetty [_ server]
@@ -51,11 +48,7 @@
     (= type :local) (local/config->Local url local-dir)))
 
 (defmethod ig/init-key :socials/twitter [_ {:keys [client-id client-secret]}]
-   (TwitterCredentialsOAuth2.
-    client-id
-    client-secret
-    (System/getenv "TWITTER_OAUTH2_ACCESS_TOKEN")
-    (System/getenv "TWITTER_OAUTH2_REFRESH_TOKEN")))
+  {:client-id client-id :client-secret client-secret})
 
 (defn -main
   "Print the last commit as a patch, then shutdown. In the future, this will be a full-blown webserver
@@ -73,7 +66,7 @@
   ((:llm/handler system) "hey")
 
   (let [patch (slurp "sample-patch.txt")]
-    ((:llm/handler system) patch))
+    (twitter/tweet {:text ((:llm/handler system) patch)}))
 
   local/local-llm-state
 
