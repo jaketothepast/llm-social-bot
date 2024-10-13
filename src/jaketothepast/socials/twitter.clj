@@ -2,8 +2,9 @@
   (:require [clojure.core.async :as a :refer [go chan <!! >!! <! >!]]
             [clojure.java.shell :as sh]
             [ring.adapter.jetty :as jetty]
-            [jaketothepast.commit-to-social :as cts]
-            [ring.middleware.params :refer [wrap-params]])
+            [ring.middleware.params :refer [wrap-params]]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io])
   (:import
    (com.twitter.clientlib.api TwitterApi)
    (com.twitter.clientlib.auth TwitterOAuth20Service)
@@ -63,15 +64,16 @@
   ;;   return accessToken;
   ;; }
 
+(defonce twitter-env (:twitter (edn/read (java.io.PushbackReader. (io/reader "environment.edn")))))
 
 (def creds
-  (let [{:keys [client-id client-secret]} (:socials/twitter cts/system)]
+  (let [{:keys [client-id client-secret]} twitter-env]
     (doto (TwitterCredentialsOAuth2.
-             client-id
-             client-secret
-             (System/getenv "TWITTER_ACCESS_TOKEN")
-             (System/getenv "TWITTER_REFRESH_TOKEN")
-             true)))) ;; Is autorefresh token == true
+           client-id
+           client-secret
+           (System/getenv "TWITTER_ACCESS_TOKEN")
+           (System/getenv "TWITTER_REFRESH_TOKEN")
+           true)))) ;; Is autorefresh token == true
 
 (def service (TwitterOAuth20Service.
               (.getTwitterOauth2ClientId creds)
@@ -132,7 +134,7 @@
 
 (defn tweet [tweet-options]
   (let [tweet-request (make-tweet-request tweet-options)
-        api (:api @twitter-state)]
+        api (or (:api @twitter-state) (:api (authorize-app)))]
     (.. api tweets (createTweet tweet-request) execute)))
 
 (comment
@@ -145,6 +147,4 @@
 
   (tweet {:text "hello, world!"})
 
-  twitter-state
-
-  (:socials/twitter cts/system))
+  twitter-state)

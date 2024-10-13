@@ -16,6 +16,7 @@
 
 (def config
   (ig/read-string (slurp "config.edn")))
+
 (def system nil)
 
 ;; TODO: :llm/handler needs to be read from the system, rather than the config.
@@ -23,8 +24,10 @@
 (defn commit-message-handler
   "Receive commit message as input, transform into tweet and post to social media"
   [request]
-  (let [body-str (body-string request)]
-    (resp/response {:status ((:llm/handler system) body-str)})))
+  (let [body-str (body-string request)
+        tweet-text ((:llm/handler system) body-str)
+        tweet-response (twitter/tweet {:text tweet-text})]
+    (resp/response {:status tweet-text})))
 
 (def app
   (ring/ring-handler
@@ -47,9 +50,6 @@
     (= type :anthropic) (anthropic/->Claude key)
     (= type :local) (local/config->Local url local-dir)))
 
-(defmethod ig/init-key :socials/twitter [_ {:keys [client-id client-secret]}]
-  {:client-id client-id :client-secret client-secret})
-
 (defn -main
   "Print the last commit as a patch, then shutdown. In the future, this will be a full-blown webserver
   that runs and receives patch files as diffs. Will then take that patch file and pass it to the LLM to prompt and send off
@@ -66,7 +66,7 @@
   ((:llm/handler system) "hey")
 
   (let [patch (slurp "sample-patch.txt")]
-    (twitter/tweet {:text ((:llm/handler system) patch)}))
+    ((:llm/handler system) patch))
 
   local/local-llm-state
 
