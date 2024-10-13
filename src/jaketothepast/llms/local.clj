@@ -41,6 +41,7 @@
   first. If we download the model weights from the internet, then write the weight
   location to the cache."
   [url local-dir]
+  (tap> "retrieving model")
   (let [dir (io/file local-dir)]
     ;; Handle creating our model dir and our cache file location
     (or (.exists dir) (.mkdirs dir)) ; Create the local directory, this didn't expand tilde

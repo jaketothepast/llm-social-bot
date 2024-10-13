@@ -11,13 +11,14 @@
    [jaketothepast.llms.local :as local]
    [clojure.java.io :as io]
    [clojure.edn :as edn]
+   [taoensso.telemere :as t]
    [jaketothepast.socials.twitter :as twitter])
   (:gen-class))
 
 (def config
   (ig/read-string (slurp "config.edn")))
 
-(def system nil)
+(def system (atom nil))
 
 ;; TODO: :llm/handler needs to be read from the system, rather than the config.
 ;;  - Need system-wide way to manage system, in reload-friendly fashion
@@ -25,7 +26,7 @@
   "Receive commit message as input, transform into tweet and post to social media"
   [request]
   (let [body-str (body-string request)
-        tweet-text ((:llm/handler system) body-str)
+        tweet-text ((:llm/handler @system) body-str)
         tweet-response (twitter/tweet {:text tweet-text})]
     (resp/response {:status tweet-text})))
 
@@ -36,6 +37,7 @@
     {:data {:middleware [json/wrap-json-response]}})))
 
 (defmethod ig/init-key :adapter/jetty [_ opts]
+  (tap> opts)
   (jetty/run-jetty app opts))
 
 (defmethod ig/halt-key! :adapter/jetty [_ server]
@@ -44,11 +46,14 @@
 (defmethod ig/init-key :adapter/prod-jetty [_ opts]
   (jetty/run-jetty app opts))
 
-(defmethod ig/init-key :llm/handler [_ {:keys [type key url local-dir]}]
+(defmethod ig/init-key :llm/handler [_ {:keys [type key url local-dir] :as llm}]
+  (tap> llm)
   (cond
     (= type :openai) (openai/->ChatGPT key)
     (= type :anthropic) (anthropic/->Claude key)
     (= type :local) (local/config->Local url local-dir)))
+
+(def log-fn (fn [val] (t/log! :info val)))
 
 (defn -main
   "Print the last commit as a patch, then shutdown. In the future, this will be a full-blown webserver
@@ -56,7 +61,11 @@
   to various social media platforms.
 
   That's all"
-  [& args])
+
+  [& args]
+  (add-tap log-fn)
+  (reset! system (ig/init config))
+  (tap> @system))
 
 (comment
   (def system (ig/init config))
@@ -71,7 +80,8 @@
   local/local-llm-state
 
   system
-  (add-tap clojure.pprint/pprint)
-  (remove-tap clojure.pprint/pprint)
+  (add-tap log-fn)
+  (remove-tap log-fn)
 
-  (-main))
+  (-main)
+  )
