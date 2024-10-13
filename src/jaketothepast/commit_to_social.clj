@@ -30,10 +30,15 @@
         tweet-response (twitter/tweet {:text tweet-text})]
     (resp/response {:status tweet-text})))
 
+(defn post-commit-script
+  [request]
+  (resp/response (str "hello")))
+
 (def app
   (ring/ring-handler
    (ring/router
-    ["/commit-msg" {:post {:handler #'commit-message-handler}}]
+    [["/commit-msg" {:post {:handler #'commit-message-handler}}]
+     ["/post-commit" {:get {:handler #'post-commit-script}}]]
     {:data {:middleware [json/wrap-json-response]}})))
 
 (defmethod ig/init-key :adapter/jetty [_ opts]
