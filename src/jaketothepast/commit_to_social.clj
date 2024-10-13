@@ -1,15 +1,54 @@
 (ns jaketothepast.commit-to-social
   (:require
+   [ring.adapter.jetty :as jetty]
    [ring.util.response :as resp]
+   [ring.util.request :refer [body-string]]
    [ring.middleware.json :as json]
    [reitit.ring :as ring]
    [integrant.core :as ig]
+   [jaketothepast.llms.openai :as openai]
+   [jaketothepast.llms.anthropic :as anthropic]
+   [jaketothepast.llms.local :as local]
    [clojure.java.io :as io]
-   [clojure.edn :as edn])
+   [clojure.edn :as edn]
+   [jaketothepast.socials.twitter :as twitter])
   (:gen-class))
+
+(def config
+  (ig/read-string (slurp "config.edn")))
+(def system nil)
 
 ;; TODO: :llm/handler needs to be read from the system, rather than the config.
 ;;  - Need system-wide way to manage system, in reload-friendly fashion
+(defn commit-message-handler
+  "Receive commit message as input, transform into tweet and post to social media"
+  [request]
+  (let [body-str (body-string request)]
+    (resp/response {:status ((:llm/handler system) body-str)})))
+
+(def app
+  (ring/ring-handler
+   (ring/router
+    ["/commit-msg" {:post {:handler #'commit-message-handler}}]
+    {:data {:middleware [json/wrap-json-response]}})))
+
+(defmethod ig/init-key :adapter/jetty [_ opts]
+  (jetty/run-jetty app opts))
+
+(defmethod ig/halt-key! :adapter/jetty [_ server]
+  (.stop server))
+
+(defmethod ig/init-key :adapter/prod-jetty [_ opts]
+  (jetty/run-jetty app opts))
+
+(defmethod ig/init-key :llm/handler [_ {:keys [type key url local-dir]}]
+  (cond
+    (= type :openai) (openai/->ChatGPT key)
+    (= type :anthropic) (anthropic/->Claude key)
+    (= type :local) (local/config->Local url local-dir)))
+
+(defmethod ig/init-key :socials/twitter [_ {:keys [client-id client-secret]}]
+  {:client-id client-id :client-secret client-secret})
 
 (defn -main
   "Print the last commit as a patch, then shutdown. In the future, this will be a full-blown webserver
@@ -18,3 +57,21 @@
 
   That's all"
   [& args])
+
+(comment
+  (def system (ig/init config))
+  (ig/halt! system)
+  (:llm/handler system)
+
+  ((:llm/handler system) "hey")
+
+  (let [patch (slurp "sample-patch.txt")]
+    (twitter/tweet {:text ((:llm/handler system) patch)}))
+
+  local/local-llm-state
+
+  system
+  (add-tap clojure.pprint/pprint)
+  (remove-tap clojure.pprint/pprint)
+
+  (-main))

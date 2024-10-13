@@ -2,8 +2,8 @@
   (:require [clojure.core.async :as a :refer [go chan <!! >!! <! >!]]
             [clojure.java.shell :as sh]
             [ring.adapter.jetty :as jetty]
-            [ring.middleware.params :refer [wrap-params]]
-            [jaketothepast.system :as sys])
+            [jaketothepast.commit-to-social :as cts]
+            [ring.middleware.params :refer [wrap-params]])
   (:import
    (com.twitter.clientlib.api TwitterApi)
    (com.twitter.clientlib.auth TwitterOAuth20Service)
@@ -65,7 +65,7 @@
 
 
 (def creds
-  (let [{:keys [client-id client-secret]} (:socials/twitter sys/system)]
+  (let [{:keys [client-id client-secret]} (:socials/twitter cts/system)]
     (doto (TwitterCredentialsOAuth2.
              client-id
              client-secret
@@ -132,7 +132,7 @@
 
 (defn tweet [tweet-options]
   (let [tweet-request (make-tweet-request tweet-options)
-        api (or (:api @twitter-state) (:api (authorize-app)))]
+        api (:api @twitter-state)]
     (.. api tweets (createTweet tweet-request) execute)))
 
 (comment
@@ -146,4 +146,5 @@
   (tweet {:text "hello, world!"})
 
   twitter-state
-)
+
+  (:socials/twitter cts/system))
