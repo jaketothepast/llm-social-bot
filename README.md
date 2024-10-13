@@ -1,6 +1,6 @@
 # jaketothepast/commit-to-social
 
-FIXME: my new application.
+A locally running service to post updates to Twitter using code that you're working on. You're already writing with each commit that you push, let this service be your social media manager!
 
 ## config.edn
 
@@ -9,63 +9,30 @@ FIXME: my new application.
 
 ### ChatGPT
 
-- :type openai, :keys
+- :type openai, :key <your API key>
 
 ### Local
 
-- :type local, will download model weights locally
+- :type local, :url <gguf url>, :local-dir /directory/to/download/models/in, :n-ctx <model context length>
 
 ## environment.edn
 
-- Set up twitter credentials here
+- Set up twitter credentials here 
 
-## Installation
+## Running the Project
 
-Download from https://github.com/jaketothepast/commit-to-social
+- Add the following script to your Git hooks for post commit
 
-## Usage
+``` sh
+#!/bin/sh
 
-FIXME: explanation
+git format-patch -n HEAD^ --stdout | curl -X POST \
+    http://localhost:8000/commit-msg -H 'Content-Type: text/plain' -d @-
+```
 
-Run the project directly, via `:exec-fn`:
+- Start the project with `clj -A:run-m`
+- Work on your code, see things get posted
 
-    $ clojure -X:run-x
-    Hello, Clojure!
-
-Run the project, overriding the name to be greeted:
-
-    $ clojure -X:run-x :name '"Someone"'
-    Hello, Someone!
-
-Run the project directly, via `:main-opts` (`-m jaketothepast.commit-to-social`):
-
-    $ clojure -M:run-m
-    Hello, World!
-
-Run the project, overriding the name to be greeted:
-
-    $ clojure -M:run-m Via-Main
-    Hello, Via-Main!
-
-Run the project's tests (they'll fail until you edit them):
-
-    $ clojure -T:build test
-
-Run the project's CI pipeline and build an uberjar (this will fail until you edit the tests to pass):
-
-    $ clojure -T:build ci
-
-This will produce an updated `pom.xml` file with synchronized dependencies inside the `META-INF`
-directory inside `target/classes` and the uberjar in `target`. You can update the version (and SCM tag)
-information in generated `pom.xml` by updating `build.clj`.
-
-If you don't want the `pom.xml` file in your project, you can remove it. The `ci` task will
-still generate a minimal `pom.xml` as part of the `uber` task, unless you remove `version`
-from `build.clj`.
-
-Run that uberjar:
-
-    $ java -jar target/net.clojars.jaketothepast/commit-to-social-0.1.0-SNAPSHOT.jar
 
 ## Options
 
