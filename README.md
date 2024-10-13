@@ -2,6 +2,23 @@
 
 FIXME: my new application.
 
+## config.edn
+
+- Configure the LLM that you want to use
+- Configure Jetty options
+
+### ChatGPT
+
+- :type openai, :keys
+
+### Local
+
+- :type local, will download model weights locally
+
+## environment.edn
+
+- Set up twitter credentials here
+
 ## Installation
 
 Download from https://github.com/jaketothepast/commit-to-social
