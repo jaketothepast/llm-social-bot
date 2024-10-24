@@ -32,7 +32,8 @@
 
 (defn post-commit-script
   [request]
-  (resp/response (str "hello")))
+  (let [script (slurp (io/resource "post-commit-script.sh"))]
+    ))
 
 (def app
   (ring/ring-handler
@@ -42,7 +43,6 @@
     {:data {:middleware [json/wrap-json-response]}})))
 
 (defmethod ig/init-key :adapter/jetty [_ opts]
-  (tap> opts)
   (jetty/run-jetty app opts))
 
 (defmethod ig/halt-key! :adapter/jetty [_ server]
@@ -52,7 +52,6 @@
   (jetty/run-jetty app opts))
 
 (defmethod ig/init-key :llm/handler [_ {:keys [type key url local-dir] :as llm}]
-  (tap> llm)
   (cond
     (= type :openai) (openai/->ChatGPT key)
     (= type :anthropic) (anthropic/->Claude key)
